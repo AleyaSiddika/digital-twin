@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Sensor Simulator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 90vh;
+      background-color: #f0f0f0;
+    }
+
+    .temperature-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .temperature-value {
+      font-size: 48px;
+      color: #ff6600;
+    }
+
+    .humidity-value {
+      font-size: 48px;
+      color: #ff0800;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="temperature-container">
+    <h1>Weather Sensor</h1>
+    <p class="temperature-value">Loading...</p>
+    <p class="humidity-value">Loading...</p>
+  </div>
+
+  <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:5000');  // Connect to Flask-SocketIO backend
+    const temperatureElement = document.querySelector('.temperature-value');
+    const humidityElement = document.querySelector('.humidity-value');
+    console.log("hello");
+    // Listen for temperature updates from the server
+    socket.on("weather_update", function (message) {
+      console.log("Received from backend:", message);  // Log the raw data
+      try {
+        // Extract the temperature value
+        const temperature = message?.value?.temperature?.properties?.value;
+        const humidity = message?.value?.humidity?.properties?.value;
+        console.log(temperature, humidity);
+
+        // Update the UI with the extracted temperature
+        temperatureElement.textContent = temperature + ' °C';
+        humidityElement.textContent = humidity + ' %';
+
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    });
+  </script>
+</body>
+
+</html>
