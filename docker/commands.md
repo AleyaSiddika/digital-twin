@@ -195,3 +195,96 @@ mosquitto_pub -h localhost -p 1883 -t "devices/weather-sensor" -m '{"temperature
 ```
 mosquitto_sub -h localhost -p 1883 -t "devices/weather-sensor" -v
 ```
+
+```
+mosquitto_pub -h localhost -p 1883 -t "devices/light-sensor" -m '{"thingId":"smart-building:light-sensor","brightness":300}' -V mqttv5
+
+```
+
+
+curl -X POST "http://localhost:8080/api/2/things/smart-building:weather-sensor/inbox/messages/control"      -u "ditto:ditto"      -H "Content-Type: application/json"      -d '{
+       "headers": {},
+       "path": "/",
+       "value": {
+         "action": "turn_on_fan",
+         "temperatureThreshold": 25
+       }
+     }'
+
+     
+
+
+
+Previous target
+
+targets": [
+    {
+      "address": "devices/{{ thing:id }}/downlink",
+      "topics": [
+        "_/_/things/twin/events"
+      ],
+      "qos": 1,
+      "authorizationContext": [
+        "connection:mqtt"
+      ],
+      "headerMapping": {
+        "reply-to": "devices/weather-sensor/downlink",
+        "correlation-id": "{{ header:correlation-id }}",
+        "Content-Type": "application/vnd.eclipse.ditto+json"
+      },
+      "payloadMapping": [
+        "Ditto"
+      ]
+    }
+  ],
+
+
+# update connection for handling downlink (outbound request) 
+function mapFromDittoProtocolMsg(dittoHeaders, textPayload, bytePayload, contentType) {
+    const jsonPayload = JSON.parse(textPayload);
+    const topic = dittoHeaders["topic"];
+
+    // Check if it's a twin events message (updated value)
+    if (topic && topic.endsWith("/things/twin/events")) {
+        const thingId = jsonPayload["thingId"];
+        const features = jsonPayload["features"];
+
+        const payloadToSend = {
+            thingId: thingId,
+            features: features
+        };
+
+        return {
+            headers: {
+                "content-type": "application/json"
+            },
+            payload: JSON.stringify(payloadToSend)
+        };
+    }
+
+    // Default fallback
+    return {
+        headers: {
+            "content-type": "application/json"
+        },
+        payload: JSON.stringify({ message: "Unhandled event" })
+    };
+}
+
+
+# Update ditto from third party app (python flask or arrowhead service )
+  curl -X PUT \
+  -u ditto:ditto \
+  "http://localhost:8080/api/2/things/smart-building:weather-sensor/features/temperature/properties/value" \
+  -H "Content-Type: application/json" \
+  -d "27.6"
+
+
+  curl -X PUT \
+  -u ditto:ditto \
+  "http://localhost:8080/api/2/things/smart-building3:motion-sensor/features/motion/properties/value" \
+  -H "Content-Type: application/json" \
+  -d "false"
+
+# check updated data to respberry pi sent from ditto triggered by third party app or arrowhead service 
+mosquitto_sub -h localhost -t "devices/weather-sensor/downlink" -v
